@@ -37,6 +37,10 @@ declare -i KEEP_WEEKLY=
 declare -i KEEP_MONTHLY=
 declare -i KEEP_YEARLY=
 
+# internal variables
+declare -r MYSQL_TAG='mysql'
+declare -r PGSQL_TAG='postgresql'
+
 ###############################################################################
 ### Helper Functions
 ###############################################################################
@@ -140,7 +144,7 @@ function dump_mysql {
 
     logmsg "$dbname"
     mysqldump $mysql_opts --databases "$dbname" --events | \
-      restic backup --quiet --tag mysql --stdin --stdin-filename "${dbname}.sql"
+      restic backup --quiet --tag "$MYSQL_TAG" --stdin --stdin-filename "${dbname}.sql"
   done
 }
 
@@ -164,11 +168,11 @@ function dump_pgsql {
 
     echo -e "\t...$dbname"
     pg_dump --blobs --format=custom "$dbname" | \
-      restic backup --quiet --tag postgresql --stdin --stdin-filename "${dbname}.sql"
+      restic backup --quiet --tag "$PGSQL_TAG" --stdin --stdin-filename "${dbname}.sql"
   done
   logmsg "Dumping PostgreSQL Globals"
   pg_dumpall --globals-only | \
-    restic backup --quiet --tag postgresql --stdin --stdin-filename "postgresql.globals.sql"
+    restic backup --quiet --tag "$PGSQL_TAG" --stdin --stdin-filename "postgresql.globals.sql"
 }
 
 ###############################################################################
@@ -185,7 +189,7 @@ function forget_and_prune {
   [[ -n "$KEEP_MONTHLY" ]]&& keep_args="$keep_args --keep-monthly $KEEP_MONTHLY"
   [[ -n "$KEEP_YEARLY" ]] && keep_args="$keep_args --keep-yearly $KEEP_YEARLY"
 
-  restic forget --prune --quiet $keep_args
+  restic forget --prune --quiet --tag "${MYSQL_TAG},${PGSQL_TAG}" $keep_args
 
   logmsg "Most recent backups:"
   logmsg $(restic snapshots --last)
