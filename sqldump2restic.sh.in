@@ -100,9 +100,25 @@ function find_config_filename {
 ### Function: Make sure we have all our external dependencies
 ###############################################################################
 function check_for_dependencies {
-  for cmd in restic mysql mysqldump psql pg_dump ; do
+  # common deps first
+  for cmd in restic ; do
     hash $cmd 2>/dev/null || bomb "Command '$cmd' not found"
   done
+
+  # mysql deps
+  if is_true "$MYSQL_BACKUP" ; then
+    for cmd in mysql mysqldump ; do
+      hash $cmd 2>/dev/null || bomb "Command '$cmd' not found"
+    done
+  fi
+
+  # pgsql deps
+  if is_true "$PGSQL_BACKUP" ; then
+    for cmd in psql pg_dump ; do
+      hash $cmd 2>/dev/null || bomb "Command '$cmd' not found"
+    done
+  fi
+
   return 0
 }
 
