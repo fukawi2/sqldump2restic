@@ -129,7 +129,7 @@ function dump_mysql {
   # abort if config file doesn't want mysql backups
   is_true "$MYSQL_BACKUP" || return 0
 
-  mysql_opts="--user=$mysql_dump_username --password=$mysql_dump_password"
+  mysql_opts="--user=$MYSQL_DUMP_USERNAME --password=$MYSQL_DUMP_PASSWORD"
 
   # TODO: accept user-defined list of databases to backup
   all_dbs="$(mysql $mysql_opts -Bse 'show databases')"
@@ -151,8 +151,8 @@ function dump_pgsql {
   # abort if config file doesn't want postgres backups
   is_true "$PGSQL_BACKUP" || return 0
 
-  export PGUSER="$pgsql_dump_username"
-  export PGPASSWORD="$pgsql_dump_password"
+  export PGUSER="$PGSQL_DUMP_USERNAME"
+  export PGPASSWORD="$PGSQL_DUMP_PASSWORD"
   export PGDATABASE='postgres'
 
   # TODO: accept user-defined list of databases to backup
