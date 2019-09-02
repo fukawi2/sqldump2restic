@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+
+###############################################################################
+# Copyright (C) 2019 Phillip Smith
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+###############################################################################
+
+set -e
+set -u
+
+declare MYSQL_DUMP_USERNAME=''
+declare MYSQL_DUMP_PASSWORD=''
+declare PGSQL_DUMP_USERNAME=''
+declare PGSQL_DUMP_PASSWORD=''
+
+# restic config
+declare RESTIC_REPOSITORY=''
+declare RESTIC_PASSWORD=''
+declare AWS_ACCESS_KEY_ID=''
+declare AWS_SECRET_ACCESS_KEY=''
+declare -i KEEP_LAST=
+declare -i KEEP_HOURLY=
+declare -i KEEP_DAILY=
+declare -i KEEP_WEEKLY=
+declare -i KEEP_MONTHLY=
+declare -i KEEP_YEARLY=
+
+###############################################################################
+### Helper Functions
+###############################################################################
+function logmsg {
+  # TODO: quiet output option
+  echo $@
+}
+function bomb {
+  echo "ABORT: "$@ >&2
+  exit 1
+}
+function is_true {
+  [[ "$1" =~ [Yy][Ee][Ss] ]] && return 0
+  [[ "$1" =~ [Tt][Rr][Uu][Ee] ]] && return 0
+  [[ "$1" = 1 ]] && return 0
+  return 1
+}
+
+###############################################################################
+### Function: Load Config File
+###############################################################################
+function load_config {
+  local config_fname="$(find_config_filename)"
+  source "$config_fname"
+  logmsg "Loaded config file $config_fname"
+
+  # validate configuration variables
+  [[ -z "$RESTIC_REPOSITORY" ]] && bomb "Undefined config: RESTIC_REPOSITORY"
+  [[ -z "$RESTIC_PASSWORD" ]]   && bomb "Undefined config: RESTIC_PASSWORD"
+  if is_true "$MYSQL_BACKUP" ; then
+    [[ -z "$MYSQL_DUMP_USERNAME" ]]   && bomb "Undefined config: MYSQL_DUMP_USERNAME"
+    [[ -z "$MYSQL_DUMP_PASSWORD" ]]   && bomb "Undefined config: MYSQL_DUMP_PASSWORD"
+  fi
+  if is_true "$PGSQL_BACKUP" ; then
+    [[ -z "$PGSQL_DUMP_USERNAME" ]]   && bomb "Undefined config: PGSQL_DUMP_USERNAME"
+    [[ -z "$PGSQL_DUMP_PASSWORD" ]]   && bomb "Undefined config: PGSQL_DUMP_PASSWORD"
+  fi
+
+  # export restic configuration variables
+  export RESTIC_PASSWORD RESTIC_REPOSITORY
+  [[ -n "$AWS_ACCESS_KEY_ID" ]]     && export AWS_ACCESS_KEY_ID
+  [[ -n "$AWS_SECRET_ACCESS_KEY" ]] && export AWS_SECRET_ACCESS_KEY
+
+  return 0
+}
+
+###############################################################################
+### Function: Locate the most specific config file
+###############################################################################
+function find_config_filename {
+  for fname in ./sqldump2restic.conf ~/.sqldump2restic.conf /etc/sqldump2restic.conf ; do
+    if [[ -f "$fname" ]] ; then
+      echo $fname;
+      return 0;
+    fi
+  done
+  bomb "Unable to locate config file!"
+}
+
+###############################################################################
+### Function: Make sure we have all our external dependencies
+###############################################################################
+function check_for_dependencies {
+  for cmd in restic mysql mysqldump psql pg_dump ; do
+    hash $cmd 2>/dev/null || bomb "Command '$cmd' not found"
+  done
+  return 0
+}
+
+###############################################################################
+### Function: Dump MySQL Databases
+###############################################################################
+function dump_mysql {
+  # abort if config file doesn't want mysql backups
+  is_true "$MYSQL_BACKUP" || return 0
+
+  mysql_opts="--user=$mysql_dump_username --password=$mysql_dump_password"
+
+  # TODO: accept user-defined list of databases to backup
+  all_dbs="$(mysql $mysql_opts -Bse 'show databases')"
+
+  logmsg "Dumping MySQL Databases"
+  for dbname in $all_dbs ; do
+    [[ "$dbname" == 'information_schema' ]] && continue
+
+    logmsg "$dbname"
+    mysqldump $mysql_opts --databases "$dbname" --events | \
+      restic backup --quiet --tag mysql --stdin --stdin-filename "${dbname}.sql"
+  done
+}
+
+###############################################################################
+### Function: Dump PostgreSQL Databases
+###############################################################################
+function dump_pgsql {
+  # abort if config file doesn't want postgres backups
+  is_true "$PGSQL_BACKUP" || return 0
+
+  export PGUSER="$pgsql_dump_username"
+  export PGPASSWORD="$pgsql_dump_password"
+  export PGDATABASE='postgres'
+
+  # TODO: accept user-defined list of databases to backup
+  all_dbs="$(psql -P format=Unaligned -tqc 'SELECT datname FROM pg_database;' | sed 's/ /%/g')"
+
+  logmsg "Dumping PostgreSQL Databases"
+  for dbname in $all_dbs ; do
+    [[ "$dbname" == 'template0' ]] && continue
+
+    echo -e "\t...$dbname"
+    pg_dump --blobs --format=custom "$dbname" | \
+      restic backup --quiet --tag postgresql --stdin --stdin-filename "${dbname}.sql"
+  done
+  logmsg "Dumping PostgreSQL Globals"
+  pg_dumpall --globals-only | \
+    restic backup --quiet --tag postgresql --stdin --stdin-filename "postgresql.globals.sql"
+}
+
+###############################################################################
+### Function: Cleanup Old Backups
+###############################################################################
+function forget_and_prune {
+  logmsg "Cleaning up old backups"
+
+  keep_args=''
+  [[ -n "$KEEP_LAST" ]]   && "$keep_args --keep-last $KEEP_LAST"
+  [[ -n "$KEEP_HOURLY" ]] && "$keep_args --keep-hourly $KEEP_HOURLY"
+  [[ -n "$KEEP_DAILY" ]]  && "$keep_args --keep-daily $KEEP_DAILY"
+  [[ -n "$KEEP_WEEKLY" ]] && "$keep_args --keep-weekly $KEEP_WEEKLY"
+  [[ -n "$KEEP_MONTHLY" ]]&& "$keep_args --keep-monthly $KEEP_MONTHLY"
+  [[ -n "$KEEP_YEARLY" ]] && "$keep_args --keep-yearly $KEEP_YEARLY"
+
+  restic forget --prune --quiet $keep_args
+
+  logmsg "Most recent backups:"
+  logmsg $(restic snapshots --last)
+}
+
+###############################################################################
+### Function: Main Program
+###############################################################################
+function main {
+  logmsg "Started at $(date)"
+  load_config
+  check_for_dependencies
+  dump_mysql
+  dump_pgsql
+  forget_and_prune
+  logmsg "Completed at $(date)"
+}
+
+main $@
