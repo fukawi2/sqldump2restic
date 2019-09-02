@@ -178,12 +178,12 @@ function forget_and_prune {
   logmsg "Cleaning up old backups"
 
   keep_args=''
-  [[ -n "$KEEP_LAST" ]]   && "$keep_args --keep-last $KEEP_LAST"
-  [[ -n "$KEEP_HOURLY" ]] && "$keep_args --keep-hourly $KEEP_HOURLY"
-  [[ -n "$KEEP_DAILY" ]]  && "$keep_args --keep-daily $KEEP_DAILY"
-  [[ -n "$KEEP_WEEKLY" ]] && "$keep_args --keep-weekly $KEEP_WEEKLY"
-  [[ -n "$KEEP_MONTHLY" ]]&& "$keep_args --keep-monthly $KEEP_MONTHLY"
-  [[ -n "$KEEP_YEARLY" ]] && "$keep_args --keep-yearly $KEEP_YEARLY"
+  [[ -n "$KEEP_LAST" ]]   && keep_args="$keep_args --keep-last $KEEP_LAST"
+  [[ -n "$KEEP_HOURLY" ]] && keep_args="$keep_args --keep-hourly $KEEP_HOURLY"
+  [[ -n "$KEEP_DAILY" ]]  && keep_args="$keep_args --keep-daily $KEEP_DAILY"
+  [[ -n "$KEEP_WEEKLY" ]] && keep_args="$keep_args --keep-weekly $KEEP_WEEKLY"
+  [[ -n "$KEEP_MONTHLY" ]]&& keep_args="$keep_args --keep-monthly $KEEP_MONTHLY"
+  [[ -n "$KEEP_YEARLY" ]] && keep_args="$keep_args --keep-yearly $KEEP_YEARLY"
 
   restic forget --prune --quiet $keep_args
 
