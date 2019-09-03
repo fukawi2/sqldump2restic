@@ -142,7 +142,7 @@ function dump_mysql {
   for dbname in $all_dbs ; do
     [[ "$dbname" == 'information_schema' ]] && continue
 
-    logmsg "$dbname"
+    logmsg "  $dbname"
     mysqldump $mysql_opts --databases "$dbname" --events | \
       restic backup --quiet --tag "$MYSQL_TAG" --stdin --stdin-filename "${dbname}.sql"
   done
@@ -166,7 +166,7 @@ function dump_pgsql {
   for dbname in $all_dbs ; do
     [[ "$dbname" == 'template0' ]] && continue
 
-    echo -e "\t...$dbname"
+    logmsg "  $dbname"
     pg_dump --blobs --format=custom "$dbname" | \
       restic backup --quiet --tag "$PGSQL_TAG" --stdin --stdin-filename "${dbname}.sql"
   done
