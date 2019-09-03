@@ -46,7 +46,7 @@ declare -r PGSQL_TAG='postgresql'
 ###############################################################################
 function logmsg {
   # TODO: quiet output option
-  echo $@
+  echo "$@"
 }
 function bomb {
   echo "ABORT: "$@ >&2
@@ -192,7 +192,7 @@ function forget_and_prune {
   restic forget --prune --quiet --tag "${MYSQL_TAG},${PGSQL_TAG}" $keep_args
 
   logmsg "Most recent backups:"
-  logmsg $(restic snapshots --last)
+  logmsg "$(restic snapshots --last)"
 }
 
 ###############################################################################
