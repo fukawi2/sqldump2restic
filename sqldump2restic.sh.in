@@ -190,9 +190,15 @@ function forget_and_prune {
   [[ -n "$KEEP_YEARLY" ]] && keep_args="$keep_args --keep-yearly $KEEP_YEARLY"
 
   restic forget --prune --quiet --tag "${MYSQL_TAG},${PGSQL_TAG}" $keep_args
+  return 0
+}
 
+###############################################################################
+### Function: Show the most recent backups in the restic repository
+###############################################################################
+function show_latest_backups {
   logmsg "Most recent backups:"
-  logmsg "$(restic snapshots --last)"
+  logmsg "$(restic snapshots --last --tag "${MYSQL_TAG},${PGSQL_TAG}")"
 }
 
 ###############################################################################
@@ -205,6 +211,7 @@ function main {
   dump_mysql
   dump_pgsql
   forget_and_prune
+  show_latest_backups
   logmsg "Completed at $(date)"
 }
 
