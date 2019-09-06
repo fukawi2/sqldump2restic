@@ -182,12 +182,12 @@ function forget_and_prune {
   logmsg "Cleaning up old backups"
 
   keep_args=''
-  [[ -n "$KEEP_LAST" ]]   && keep_args="$keep_args --keep-last $KEEP_LAST"
-  [[ -n "$KEEP_HOURLY" ]] && keep_args="$keep_args --keep-hourly $KEEP_HOURLY"
-  [[ -n "$KEEP_DAILY" ]]  && keep_args="$keep_args --keep-daily $KEEP_DAILY"
-  [[ -n "$KEEP_WEEKLY" ]] && keep_args="$keep_args --keep-weekly $KEEP_WEEKLY"
-  [[ -n "$KEEP_MONTHLY" ]]&& keep_args="$keep_args --keep-monthly $KEEP_MONTHLY"
-  [[ -n "$KEEP_YEARLY" ]] && keep_args="$keep_args --keep-yearly $KEEP_YEARLY"
+  [[ "$KEEP_LAST" -gt 0 ]]    && keep_args="$keep_args --keep-last $KEEP_LAST"
+  [[ "$KEEP_HOURLY" -gt 0 ]]  && keep_args="$keep_args --keep-hourly $KEEP_HOURLY"
+  [[ "$KEEP_DAILY" -gt 0 ]]   && keep_args="$keep_args --keep-daily $KEEP_DAILY"
+  [[ "$KEEP_WEEKLY" -gt 0 ]]  && keep_args="$keep_args --keep-weekly $KEEP_WEEKLY"
+  [[ "$KEEP_MONTHLY" -gt 0 ]] && keep_args="$keep_args --keep-monthly $KEEP_MONTHLY"
+  [[ "$KEEP_YEARLY" -gt 0 ]]  && keep_args="$keep_args --keep-yearly $KEEP_YEARLY"
 
   restic forget --prune --quiet --tag "${MYSQL_TAG}" --tag "${PGSQL_TAG}" $keep_args
   return 0
