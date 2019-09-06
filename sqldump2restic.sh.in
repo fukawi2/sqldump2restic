@@ -20,6 +20,9 @@
 set -e
 set -u
 
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+
+
 declare MYSQL_DUMP_USERNAME=''
 declare MYSQL_DUMP_PASSWORD=''
 declare PGSQL_DUMP_USERNAME=''
