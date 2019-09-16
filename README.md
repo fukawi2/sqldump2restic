@@ -4,7 +4,7 @@ A tool to backup MySQL/MariaSQL and PostgreSQL Databases using [restic](https://
 
 ## Installation
 
-1. Clone the source code: `git clone https://github.com/fukawi2/sqldump2restic.git1
+1. Clone the source code: `git clone https://github.com/fukawi2/sqldump2restic.git`
 2. Change directory: `cd sqldump2restic`
 3. Install: `make install`
 4. Create config file: `cp sqldump2restic.conf /etc/sqldump2restic.conf && $EDITOR /etc/sqldump2restic.conf`
