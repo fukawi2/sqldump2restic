@@ -1,0 +1,10 @@
+[Unit]
+Description=scheduled SQL Database backup
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+#RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target
