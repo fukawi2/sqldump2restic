@@ -209,6 +209,13 @@ function show_latest_backups {
 ###############################################################################
 function main {
   logmsg "Started at $(date)"
+
+  # due to a bug in restic, the pwd will get prepended to what we pass using
+  # the --stdin-filename option, so to ensure consistency, we will change our
+  # workign path to root for now until a fix is released.
+  # see: https://github.com/restic/restic/pull/2206
+  cd /
+
   load_config
   check_for_dependencies
   dump_mysql
