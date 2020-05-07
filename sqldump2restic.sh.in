@@ -145,6 +145,7 @@ function dump_mysql {
   logmsg "Dumping MySQL Databases"
   for dbname in $all_dbs ; do
     [[ "$dbname" == 'information_schema' ]] && continue
+    [[ "$dbname" == 'performance_schema' ]] && continue
 
     logmsg "  $dbname"
     mysqldump $mysql_opts --databases "$dbname" --skip-events | \
